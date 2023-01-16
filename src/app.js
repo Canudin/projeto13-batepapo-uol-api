@@ -52,25 +52,19 @@ server.get("/participants", async (req, res) => {
 server.post("/messages", async (req, res) => {
   const userMessage = req.body;
   const fromUser = req.headers.user;
-  
+
   const msgSchema = joi.object({
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().required(),
+    type: joi.string().valid("message", "private_message").required(),
   });
   const msgValidation = msgSchema.validate(userMessage);
+  const existUser = await db.collection("participants").findOne({ name: fromUser });
   if (msgValidation.error) {
     const errors = msgValidation.error.details.map((detail) => detail.message);
     return res.status(422).send(errors);
   }
- 
-  const existUser = await db.collection("participants").findOne({ name: fromUser });
-  let isError = true;
-  if (existUser) isError = !isError;
-  if (userMessage.type === "message" || userMessage.type === "private_message") isError = !isError;
-  if (isError) {
-    return res.status(422).send();
-  }
+  if (!existUser) return res.status(422).send("User not found");
 
   await db.collection("messages").insertOne({
     from: fromUser,
@@ -83,9 +77,12 @@ server.post("/messages", async (req, res) => {
 });
 
 server.get("/messages", async (req, res) => {
-  const allMsgs = await db.collection("messages").find().toArray();
-  return res.status(200).send(allMsgs);
-})
+  const limit = parseInt(req.query.limit)
+  const allMsgs = await db.collection("messages").find().toArray()
+  const userMsgs = await allMsgs.filter((item) => item.from === req.headers.user || item.to === req.headers.user);
+  const lastUserMsgs = await userMsgs.reverse().slice(0, limit)
+  return res.status(200).send(lastUserMsgs);
+});
 
 server.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
