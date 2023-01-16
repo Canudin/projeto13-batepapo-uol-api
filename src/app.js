@@ -22,7 +22,7 @@ mongoClient.connect().then(() => {
 server.post("/participants", async (req, res) => {
   const newUser = req.body.name;
   const timestamp = Date.now();
-  if (!newUser) return res.sendStatus(404)
+  if (!newUser) return res.sendStatus(404);
   try {
     const existUser = await db.collection("participants").findOne({ name: newUser });
     if (existUser) return res.status(409).send("Participante já existe");
@@ -84,7 +84,10 @@ server.get("/messages", async (req, res) => {
   console.log(allMsgs);
   const userMsgs = allMsgs.filter(
     (oneMsg) =>
-      oneMsg.from === req.headers.user || oneMsg.to === req.headers.user || oneMsg.type === "message" || oneMsg.type === "status"
+      oneMsg.from === req.headers.user ||
+      oneMsg.to === req.headers.user ||
+      oneMsg.type === "message" ||
+      oneMsg.type === "status"
   );
   const lastUserMsgs = await userMsgs.reverse().slice(0, limit);
   return res.status(200).send(lastUserMsgs);
@@ -105,8 +108,23 @@ server.post("/status", async (req, res) => {
 });
 
 setInterval(async () => {
-  const getAllUsers = await db.collection("participants").find().toArray();
-  const getInactiveUsers = a;
+  const getLimitTimestamp = Date.now() - 10000; //set timestamp limit to be now minus 10s
+  const getInactiveUsers = await db
+    .collection("participants")
+    .find({ lastStatus: { $lt: getLimitTimestamp } })
+    .toArray();
+  getInactiveUsers.forEach(async (inactiveUser) => {
+    await db.collection("messages").insertOne({
+      from: inactiveUser.name,
+      to: "Todos",
+      text: "sai da sala...",
+      type: "status",
+      time: dayjs().format("HH:mm:ss"),
+    });
+  });
+  const deleteInactiveUsers = await db
+    .collection("participants")
+    .deleteMany({ lastStatus: { $lt: getLimitTimestamp } });
 }, 15000);
 
 server.listen(PORT, () => {
