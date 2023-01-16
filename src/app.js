@@ -11,7 +11,7 @@ const PORT = 5000;
 server.use(cors());
 server.use(express.json());
 
-dotenv.config()
+dotenv.config();
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 let db;
 
@@ -22,6 +22,7 @@ mongoClient.connect().then(() => {
 server.post("/participants", async (req, res) => {
   const newUser = req.body.name;
   const timestamp = Date.now();
+  if (!newUser) return res.sendStatus(404)
   try {
     const existUser = await db.collection("participants").findOne({ name: newUser });
     if (existUser) return res.status(409).send("Participante já existe");
@@ -63,7 +64,7 @@ server.post("/messages", async (req, res) => {
   const existUser = await db.collection("participants").findOne({ name: fromUser });
   if (msgValidation.error) {
     const errors = msgValidation.error.details.map((detail) => detail.message);
-    return res.status(422).send(errors); 
+    return res.status(422).send(errors);
   }
   if (!existUser) return res.status(422).send("User not found");
 
@@ -80,8 +81,10 @@ server.post("/messages", async (req, res) => {
 server.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
   const allMsgs = await db.collection("messages").find().toArray();
-  const userMsgs = await allMsgs.filter(
-    (item) => item.from === req.headers.user || item.to === req.headers.user
+  console.log(allMsgs);
+  const userMsgs = allMsgs.filter(
+    (oneMsg) =>
+      oneMsg.from === req.headers.user || oneMsg.to === req.headers.user || oneMsg.type === "message" || oneMsg.type === "status"
   );
   const lastUserMsgs = await userMsgs.reverse().slice(0, limit);
   return res.status(200).send(lastUserMsgs);
@@ -93,7 +96,7 @@ server.post("/status", async (req, res) => {
   try {
     const updated = await db
       .collection("participants")
-      .updateOne({ name: fromUser }, { $set: {lastStatus: timestamp} });
+      .updateOne({ name: fromUser }, { $set: { lastStatus: timestamp } });
     if (updated.modifiedCount === 0) return res.sendStatus(404);
     return res.sendStatus(200);
   } catch (err) {
@@ -101,8 +104,9 @@ server.post("/status", async (req, res) => {
   }
 });
 
-setInterval(() => {
-  const deleted = db.collection("participants")
+setInterval(async () => {
+  const getAllUsers = await db.collection("participants").find().toArray();
+  const getInactiveUsers = a;
 }, 15000);
 
 server.listen(PORT, () => {
