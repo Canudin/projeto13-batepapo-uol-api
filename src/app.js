@@ -22,7 +22,7 @@ mongoClient.connect().then(() => {
 server.post("/participants", async (req, res) => {
   const newUser = req.body.name;
   const timestamp = Date.now();
-  if (!newUser) return res.sendStatus(404);
+  if (!newUser) return res.sendStatus(422);
   try {
     const existUser = await db.collection("participants").findOne({ name: newUser });
     if (existUser) return res.status(409).send("Participante já existe");
@@ -80,8 +80,16 @@ server.post("/messages", async (req, res) => {
 
 server.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
+  if (limit <= 0) return res.sendStatus(422);
+
   const allMsgs = await db.collection("messages").find().toArray();
-  console.log(allMsgs);
+  if (!limit) {
+    const allPublicMessages = allMsgs.filter((oneMsg) => {
+      oneMsg.type === "message" || oneMsg.type === "status";
+    });
+    return res.status(200).send(allMsgs);
+  }
+
   const userMsgs = allMsgs.filter(
     (oneMsg) =>
       oneMsg.from === req.headers.user ||
@@ -99,7 +107,7 @@ server.post("/status", async (req, res) => {
   try {
     const updated = await db
       .collection("participants")
-      .updateOne({ name: fromUser }, { $set: { lastStatus: timestamp } });
+      .updateOne({ name: fromUser }, { lastStatus: { $set: timestamp } });
     if (updated.modifiedCount === 0) return res.sendStatus(404);
     return res.sendStatus(200);
   } catch (err) {
