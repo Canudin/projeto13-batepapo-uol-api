@@ -80,14 +80,14 @@ server.post("/messages", async (req, res) => {
 
 server.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
-  if (limit <= 0) return res.sendStatus(422);
+  if (limit <= 0 || typeof limit !== "number") return res.sendStatus(422);
 
   const allMsgs = await db.collection("messages").find().toArray();
   if (!limit) {
     const allPublicMessages = allMsgs.filter((oneMsg) => {
       oneMsg.type === "message" || oneMsg.type === "status";
     });
-    return res.status(200).send(allMsgs);
+    return res.status(200).send(allPublicMessages);
   }
 
   const userMsgs = allMsgs.filter(
@@ -107,7 +107,7 @@ server.post("/status", async (req, res) => {
   try {
     const updated = await db
       .collection("participants")
-      .updateOne({ name: fromUser }, { lastStatus: { $set: timestamp } });
+      .updateOne({ name: fromUser }, { $set: { lastStatus: timestamp } });
     if (updated.modifiedCount === 0) return res.sendStatus(404);
     return res.sendStatus(200);
   } catch (err) {
