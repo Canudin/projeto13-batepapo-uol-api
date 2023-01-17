@@ -79,19 +79,13 @@ server.post("/messages", async (req, res) => {
 });
 
 server.get("/messages", async (req, res) => {
-  let limit
-  if (req.query.limit !== undefined){
-    limit = parseInt(req.query.limit);
-  } else {
-    limit = req.query.limit;
-  }
-  console.log(typeof limit !== Number)
-  if (limit <= 0 || typeof limit === "NaN" || typeof limit !== "undefined") return res.sendStatus(422);
+  const limit = parseInt(req.query.limit);
   const allMsgs = await db.collection("messages").find().toArray();
-  if (!limit || typeof limit === "undefined") {
+  if (typeof req.query.limit === "undefined") {
     const allPublicMessages = allMsgs.filter((oneMsg) => oneMsg.type !== "private_message");
     return res.status(200).send(allPublicMessages);
   }
+  if (!limit) return res.sendStatus(422);
 
   const userMsgs = allMsgs.filter(
     (oneMsg) =>
