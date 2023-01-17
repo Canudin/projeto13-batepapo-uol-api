@@ -85,7 +85,7 @@ server.get("/messages", async (req, res) => {
     const allPublicMessages = allMsgs.filter((oneMsg) => oneMsg.type !== "private_message");
     return res.status(200).send(allPublicMessages);
   }
-  if (!limit) return res.sendStatus(422);
+  if (!limit || limit <= 0) return res.sendStatus(422);
 
   const userMsgs = allMsgs.filter(
     (oneMsg) =>
