@@ -81,9 +81,8 @@ server.post("/messages", async (req, res) => {
 server.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
   const allMsgs = await db.collection("messages").find().toArray();
-  
+
   if (typeof req.query.limit === "undefined") {
-    const lastUserMsgs = await userMsgs.reverse().slice(0, limit);
     const userMsgs = allMsgs.filter(
       (oneMsg) =>
         oneMsg.from === req.headers.user ||
@@ -91,6 +90,7 @@ server.get("/messages", async (req, res) => {
         oneMsg.type === "message" ||
         oneMsg.type === "status"
     );
+    const lastUserMsgs = await userMsgs.reverse();
     return res.status(200).send(lastUserMsgs);
   }
 
