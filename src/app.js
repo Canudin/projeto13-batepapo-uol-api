@@ -22,7 +22,7 @@ mongoClient.connect().then(() => {
 server.post("/participants", async (req, res) => {
   const newUser = req.body.name;
   const timestamp = Date.now();
-  if (!newUser) return res.sendStatus(422);
+  if (!newUser || typeof newUser !== "string") return res.sendStatus(422);
   try {
     const existUser = await db.collection("participants").findOne({ name: newUser });
     if (existUser) return res.status(409).send("Participante já existe");
@@ -84,9 +84,7 @@ server.get("/messages", async (req, res) => {
 
   const allMsgs = await db.collection("messages").find().toArray();
   if (!limit) {
-    const allPublicMessages = allMsgs.filter((oneMsg) => {
-      oneMsg.type === "message" || oneMsg.type === "status";
-    });
+    const allPublicMessages = allMsgs.filter((oneMsg) => oneMsg.type !== "private_message");
     return res.status(200).send(allPublicMessages);
   }
 
